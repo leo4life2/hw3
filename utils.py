@@ -51,7 +51,7 @@ def get_synonyms(word, tag):
             synonyms.add(lemma.name().replace('_', ' '))
 
     synonyms.discard(word)  # Remove the original word from synonyms
-    return choice(list(synonyms)) if synonyms else word
+    return random.choice(list(synonyms)) if synonyms else word
 
 def change_number(word, tag):
     if tag.startswith('N'):
