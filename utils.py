@@ -14,6 +14,7 @@ from nltk.corpus import wordnet
 from nltk import word_tokenize
 from nltk import pos_tag
 from nltk.tokenize.treebank import TreebankWordDetokenizer
+from nltk.corpus.reader import NOUN, VERB, ADV, ADJ
 
 random.seed(0)
 
@@ -34,39 +35,48 @@ def example_transform(example):
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
-def get_synonyms(word, tag):
-    tag_map = {'N': 'n', 'J': 'a', 'V': 'v', 'R': 'r'}
-    wn_tag = tag_map.get(tag[0].upper(), None)
-    if wn_tag is None:
-        return word
+def get_wordnet_pos(treebank_tag):
+    """
+    Return the WordNet POS tag from the Penn Treebank tag.
+    """
+    if treebank_tag.startswith('J'):
+        return ADJ
+    elif treebank_tag.startswith('V'):
+        return VERB
+    elif treebank_tag.startswith('R'):
+        return ADV
+    elif treebank_tag.startswith('N'):
+        return NOUN
+    else:
+        return ''
 
-    synsets = wordnet.synsets(word, pos=wn_tag)
-    if not synsets:
-        return word
-
+def get_synonyms(word, pos):
+    """
+    Get synonyms for the word with the given part of speech.
+    """
     synonyms = set()
-    for synset in synsets:
+    for synset in wordnet.synsets(word, pos=pos):
         for lemma in synset.lemmas():
-            synonyms.add(lemma.name().replace('_', ' '))
-
-    synonyms.discard(word)  # Remove the original word from synonyms
+            if lemma.name() != word:
+                synonyms.add(lemma.name().replace('_', ' '))
     return random.choice(list(synonyms)) if synonyms else word
 
-def change_number(word, tag):
-    if tag.startswith('NN'):
-        lemmas = wordnet.synsets(word, pos='n')
-        if not lemmas:
-            return word  # If word has no synsets in WordNet, return as is
-        
-        lemma = lemmas[0]  # Take the first lemma
-        if tag == 'NNS':
-            # Use NLTK's morphy to find the base form
-            singular_form = wordnet.morphy(word, wordnet.NOUN)
-            return singular_form if singular_form else word
-        elif tag == 'NN':
-            # Unfortunately, NLTK does not provide a way to pluralize, so this might not be accurate for all nouns
-            plural_form = lemma.name() + 's'
-            return plural_form
+def change_number(word, pos):
+    """
+    Change the number of a noun from singular to plural and vice versa.
+    """
+    if pos == NOUN:
+        lemmas = wordnet.synsets(word, pos=NOUN)
+        if lemmas:
+            lemma = lemmas[0].name()
+            if word == lemma:
+                # Word is singular, try to convert to plural
+                plural_form = lemma + 's'  # Simplistic approach
+                return plural_form
+            else:
+                # Word is plural, try to convert to singular
+                singular_form = wordnet.morphy(word, NOUN)
+                return singular_form if singular_form else word
     return word
 
 def custom_transform(example):
@@ -75,12 +85,16 @@ def custom_transform(example):
 
     transformed_words = []
     for word, tag in pos_tags:
-        if tag in ('NN', 'NNS'):
-            # Attempt to change the number
-            new_word = change_number(word, tag)
+        wordnet_pos = get_wordnet_pos(tag)
+        if wordnet_pos:
+            if wordnet_pos == NOUN:
+                # Attempt to change the number
+                new_word = change_number(word, wordnet_pos)
+            else:
+                # Attempt to get a synonym
+                new_word = get_synonyms(word, wordnet_pos)
         else:
-            # Attempt to get a synonym
-            new_word = get_synonyms(word, tag)
+            new_word = word
         transformed_words.append(new_word)
 
     example['text'] = ' '.join(transformed_words)
