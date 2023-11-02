@@ -12,6 +12,7 @@ import random
 import argparse
 from nltk.corpus import wordnet
 from nltk import word_tokenize
+from nltk import pos_tag
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 
 random.seed(0)
@@ -33,18 +34,40 @@ def example_transform(example):
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
+def find_adverbial_phrases(tags):
+    # This function identifies adverbial phrases.
+    adverbial_phrases = []
+    for i, (word, tag) in enumerate(tags):
+        if tag.startswith('RB'):  # RB, RBR, and RBS are adverb related POS tags
+            adverbial_phrases.append((i, word))
+    return adverbial_phrases
+
+def rearrange_adverbial_phrases(sentence):
+    tokens = word_tokenize(sentence)
+    tags = pos_tag(tokens)
+    
+    adverbial_phrases = find_adverbial_phrases(tags)
+    
+    # Move the first adverb to the start of the sentence if it's not already there
+    if adverbial_phrases and adverbial_phrases[0][0] > 0:
+        adverb, adverb_idx = adverbial_phrases[0]
+        # Remove the adverb
+        tokens.pop(adverb_idx)
+        # Insert the adverb at the beginning
+        tokens.insert(0, adverb)
+    
+    return ' '.join(tokens)
 
 def custom_transform(example):
     ################################
     ##### YOUR CODE BEGINGS HERE ###
 
-    # Design and implement the transformation as mentioned in pdf
-    # You are free to implement any transformation but the comments at the top roughly describe
-    # how you could implement two of them --- synonym replacement and typos.
-
-    # You should update example["text"] using your transformation
-
-    raise NotImplementedError
+    # Get the original sentence from the example
+    sentence = example["text"]
+    # Transform the sentence by rearranging adverbial phrases
+    transformed_sentence = rearrange_adverbial_phrases(sentence)
+    # Update the example text with the transformed sentence
+    example["text"] = transformed_sentence
 
     ##### YOUR CODE ENDS HERE ######
 
