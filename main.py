@@ -42,12 +42,14 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
 
     for epoch in range(num_epochs):
         for batch in train_dataloader:
-            optimizer.zero_grad()
+            # Move batch to device
+            batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(**batch)
             loss = outputs.loss
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
+            optimizer.zero_grad()
             progress_bar.update(1)
 
     ##### YOUR CODE ENDS HERE ######
@@ -162,6 +164,7 @@ if __name__ == "__main__":
 
     # Tokenize the dataset
     dataset = load_dataset("imdb")
+    
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
     # Prepare dataset for use by model
