@@ -34,41 +34,29 @@ def example_transform(example):
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
-def find_adverbial_phrases(tags):
-    # This function identifies adverbial phrases.
-    adverbial_phrases = []
-    for i, (word, tag) in enumerate(tags):
-        if tag.startswith('RB'):  # RB, RBR, and RBS are adverb related POS tags
-            adverbial_phrases.append((i, word))
-    return adverbial_phrases
 
-def rearrange_adverbial_phrases(sentence):
-    tokens = word_tokenize(sentence)
-    tags = pos_tag(tokens)
-    
-    adverbial_phrases = find_adverbial_phrases(tags)
-    
-    # Move the first adverb to the start of the sentence if it's not already there
-    if adverbial_phrases and adverbial_phrases[0][0] > 0:
-        adverb, adverb_idx = adverbial_phrases[0]
-        # Remove the adverb
-        tokens.pop(adverb_idx)
-        # Insert the adverb at the beginning
-        tokens.insert(0, adverb)
-    
-    return ' '.join(tokens)
+def get_hypernym(word):
+    synsets = wordnet.synsets(word)
+    if synsets:
+        hypernyms = synsets[0].hypernyms()
+        if hypernyms:
+            return hypernyms[0].lemmas()[0].name()
+    return word
 
 def custom_transform(example):
-    ################################
-    ##### YOUR CODE BEGINGS HERE ###
+    # Tokenize and tag the sentence
+    words = word_tokenize(example['text'])
+    pos_tags = pos_tag(words)
 
-    # Get the original sentence from the example
-    sentence = example["text"]
-    # Transform the sentence by rearranging adverbial phrases
-    transformed_sentence = rearrange_adverbial_phrases(sentence)
-    # Update the example text with the transformed sentence
-    example["text"] = transformed_sentence
+    # Replace nouns and verbs with their hypernyms
+    transformed_words = []
+    for word, tag in pos_tags:
+        if tag.startswith('NN') or tag.startswith('VB'):
+            hypernym = get_hypernym(word)
+            transformed_words.append(hypernym)
+        else:
+            transformed_words.append(word)
 
-    ##### YOUR CODE ENDS HERE ######
-
+    # Detokenize the transformed sentence
+    example['text'] = TreebankWordDetokenizer().detokenize(transformed_words)
     return example
