@@ -35,7 +35,6 @@ def example_transform(example):
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
 def get_synonyms(word, tag):
-    # Ensures the word is a noun, verb, adjective, or adverb for synonym replacement
     tag_map = {'N': 'n', 'J': 'a', 'V': 'v', 'R': 'r'}
     wn_tag = tag_map.get(tag[0].upper(), None)
     if wn_tag is None:
@@ -54,19 +53,19 @@ def get_synonyms(word, tag):
     return random.choice(list(synonyms)) if synonyms else word
 
 def change_number(word, tag):
-    if tag.startswith('N'):
-        lemmas = wordnet.synsets(word)
+    if tag.startswith('NN'):
+        lemmas = wordnet.synsets(word, pos='n')
         if not lemmas:
-            return word
-        lemma = lemmas[0]
+            return word  # If word has no synsets in WordNet, return as is
+        
+        lemma = lemmas[0]  # Take the first lemma
         if tag == 'NNS':
-            # If the word is plural, we will attempt to convert to singular
-            singular_form = lemma.name().replace('_', ' ')
-            return singular_form
+            # Use NLTK's morphy to find the base form
+            singular_form = wordnet.morphy(word, wordnet.NOUN)
+            return singular_form if singular_form else word
         elif tag == 'NN':
-            # If the word is singular, we will attempt to convert to plural
-            # This simplistic approach may not work for all nouns
-            plural_form = lemma.name().replace('_', ' ') + 's'
+            # Unfortunately, NLTK does not provide a way to pluralize, so this might not be accurate for all nouns
+            plural_form = lemma.name() + 's'
             return plural_form
     return word
 
@@ -76,7 +75,7 @@ def custom_transform(example):
 
     transformed_words = []
     for word, tag in pos_tags:
-        if tag.startswith('NN'):
+        if tag in ('NN', 'NNS'):
             # Attempt to change the number
             new_word = change_number(word, tag)
         else:
