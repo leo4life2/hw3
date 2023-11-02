@@ -97,11 +97,6 @@ def create_augmented_dataloader(args, dataset):
     # Here, 'dataset' is the original dataset. You should return a dataloader called 'train_dataloader' -- this
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
-    
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
-
-    def tokenize_function(examples):
-        return tokenizer(examples['text'], padding="max_length", truncation=True)
 
     tokenized_datasets = dataset.map(tokenize_function, batched=True)
     train_dataset = tokenized_datasets["train"]
