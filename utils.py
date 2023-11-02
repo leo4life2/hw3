@@ -14,7 +14,6 @@ from nltk.corpus import wordnet
 from nltk import word_tokenize
 from nltk import pos_tag
 from nltk.tokenize.treebank import TreebankWordDetokenizer
-from nltk.corpus.reader import NOUN, VERB, ADV, ADJ
 
 random.seed(0)
 
@@ -39,6 +38,7 @@ def get_wordnet_pos(treebank_tag):
     """
     Return the WordNet POS tag from the Penn Treebank tag.
     """
+    ADJ, NOUN, ADV, VERB = 'a', 'n', 'r', 'v'
     if treebank_tag.startswith('J'):
         return ADJ
     elif treebank_tag.startswith('V'):
@@ -61,24 +61,6 @@ def get_synonyms(word, pos):
                 synonyms.add(lemma.name().replace('_', ' '))
     return random.choice(list(synonyms)) if synonyms else word
 
-def change_number(word, pos):
-    """
-    Change the number of a noun from singular to plural and vice versa.
-    """
-    if pos == NOUN:
-        lemmas = wordnet.synsets(word, pos=NOUN)
-        if lemmas:
-            lemma = lemmas[0].name()
-            if word == lemma:
-                # Word is singular, try to convert to plural
-                plural_form = lemma + 's'  # Simplistic approach
-                return plural_form
-            else:
-                # Word is plural, try to convert to singular
-                singular_form = wordnet.morphy(word, NOUN)
-                return singular_form if singular_form else word
-    return word
-
 def custom_transform(example):
     words = word_tokenize(example['text'])
     pos_tags = pos_tag(words)
@@ -87,12 +69,8 @@ def custom_transform(example):
     for word, tag in pos_tags:
         wordnet_pos = get_wordnet_pos(tag)
         if wordnet_pos:
-            if wordnet_pos == NOUN:
-                # Attempt to change the number
-                new_word = change_number(word, wordnet_pos)
-            else:
-                # Attempt to get a synonym
-                new_word = get_synonyms(word, wordnet_pos)
+            # Attempt to get a synonym
+            new_word = get_synonyms(word, wordnet_pos)
         else:
             new_word = word
         transformed_words.append(new_word)
