@@ -161,7 +161,10 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
     # Tokenize the dataset
-    dataset = load_dataset("imdb")
+    # TODO: Revert before submission.
+    cache_dir = "/scratch/zl3493/hw3/imbd_cache"
+    dataset = load_dataset("imdb", cache_dir=cache_dir)
+    # dataset = load_dataset("imdb")
     tokenized_dataset = dataset.map(tokenize_function, batched=True)
 
     # Prepare dataset for use by model
