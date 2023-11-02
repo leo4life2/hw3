@@ -34,27 +34,40 @@ def example_transform(example):
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
-def get_synonym(word):
-    synsets = wordnet.synsets(word)
+def get_synonyms(word, tag):
+    # Ensures the word is a noun, verb, adjective, or adverb for synonym replacement
+    tag_map = {'N': 'n', 'J': 'a', 'V': 'v', 'R': 'r'}
+    wn_tag = tag_map.get(tag[0].upper(), None)
+    if wn_tag is None:
+        return word
+
+    synsets = wordnet.synsets(word, pos=wn_tag)
+    if not synsets:
+        return word
+
     synonyms = set()
     for synset in synsets:
         for lemma in synset.lemmas():
             synonyms.add(lemma.name().replace('_', ' '))
-    synonyms.discard(word)
-    return random.choice(list(synonyms)) if synonyms else word
+
+    synonyms.discard(word)  # Remove the original word from synonyms
+    return choice(list(synonyms)) if synonyms else word
 
 def change_number(word, tag):
-    if tag.startswith('NN'):
-        if wordnet.synsets(word):
-            lemmas = wordnet.synsets(word)[0].lemmas()
-            if lemmas[0].count():
-                if tag == 'NNS':
-                    # Convert from plural to singular
-                    return lemmas[0].name().replace('_', ' ')
-                else:
-                    # Convert from singular to plural
-                    plural_form = lemmas[0].count_forms()[0]
-                    return plural_form.replace('_', ' ')
+    if tag.startswith('N'):
+        lemmas = wordnet.synsets(word)
+        if not lemmas:
+            return word
+        lemma = lemmas[0]
+        if tag == 'NNS':
+            # If the word is plural, we will attempt to convert to singular
+            singular_form = lemma.name().replace('_', ' ')
+            return singular_form
+        elif tag == 'NN':
+            # If the word is singular, we will attempt to convert to plural
+            # This simplistic approach may not work for all nouns
+            plural_form = lemma.name().replace('_', ' ') + 's'
+            return plural_form
     return word
 
 def custom_transform(example):
@@ -62,12 +75,14 @@ def custom_transform(example):
     pos_tags = pos_tag(words)
 
     transformed_words = []
-    for word, tag in zip(words, pos_tags):
+    for word, tag in pos_tags:
         if tag.startswith('NN'):
-            word = change_number(word, tag)
-        elif tag.startswith(('JJ', 'RB', 'VB')):
-            word = get_synonym(word)
-        transformed_words.append(word)
+            # Attempt to change the number
+            new_word = change_number(word, tag)
+        else:
+            # Attempt to get a synonym
+            new_word = get_synonyms(word, tag)
+        transformed_words.append(new_word)
 
     example['text'] = ' '.join(transformed_words)
     return example
