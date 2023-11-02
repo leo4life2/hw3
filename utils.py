@@ -34,40 +34,40 @@ def example_transform(example):
 # something called synsets (which stands for synonymous words) and for each of them, lemmas() should give you a possible synonym word.
 # You can randomly select each word with some fixed probability to replace by a synonym.
 
-def find_adverbial_phrases(tags):
-    # This function identifies adverbial phrases.
-    adverbial_phrases = []
-    for i, (word, tag) in enumerate(tags):
-        if tag.startswith('RB'):  # RB, RBR, and RBS are adverb related POS tags
-            adverbial_phrases.append((i, word))
-    return adverbial_phrases
+def get_synonym(word):
+    synsets = wordnet.synsets(word)
+    synonyms = set()
+    for synset in synsets:
+        for lemma in synset.lemmas():
+            synonyms.add(lemma.name().replace('_', ' '))
+    synonyms.discard(word)
+    return random.choice(list(synonyms)) if synonyms else word
 
-def rearrange_adverbial_phrases(sentence):
-    tokens = word_tokenize(sentence)
-    tags = pos_tag(tokens)
-    
-    adverbial_phrases = find_adverbial_phrases(tags)
-    
-    # Move the first adverb to the start of the sentence if it's not already there
-    if adverbial_phrases and adverbial_phrases[0][0] > 0:
-        adverb, adverb_idx = adverbial_phrases[0]
-        # Remove the adverb
-        tokens.pop(adverb_idx)
-        # Insert the adverb at the beginning
-        tokens.insert(0, adverb)
-    
-    return ' '.join(tokens)
+def change_number(word, tag):
+    if tag.startswith('NN'):
+        if wordnet.synsets(word):
+            lemmas = wordnet.synsets(word)[0].lemmas()
+            if lemmas[0].count():
+                if tag == 'NNS':
+                    # Convert from plural to singular
+                    return lemmas[0].name().replace('_', ' ')
+                else:
+                    # Convert from singular to plural
+                    plural_form = lemmas[0].count_forms()[0]
+                    return plural_form.replace('_', ' ')
+    return word
 
 def custom_transform(example):
-    ################################
-    ##### YOUR CODE BEGINS HERE ####
+    words = word_tokenize(example['text'])
+    pos_tags = pos_tag(words)
 
-    # Get the original sentence from the example
-    sentence = example["text"]
-    # Transform the sentence by rearranging adverbial phrases
-    transformed_sentence = rearrange_adverbial_phrases(sentence)
-    # Update the example text with the transformed sentence
-    example["text"] = transformed_sentence
+    transformed_words = []
+    for word, tag in zip(words, pos_tags):
+        if tag.startswith('NN'):
+            word = change_number(word, tag)
+        elif tag.startswith(('JJ', 'RB', 'VB')):
+            word = get_synonym(word)
+        transformed_words.append(word)
 
-    ##### YOUR CODE ENDS HERE ######
+    example['text'] = ' '.join(transformed_words)
     return example
