@@ -98,33 +98,33 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
+    # Prepare the training dataset
     train_dataset = dataset["train"]
 
-    # Select 5,000 random samples to be transformed
-    num_augmented_samples = 5000
-    random_indices = random.sample(range(len(train_dataset)), num_augmented_samples)
-    random_subset = train_dataset.select(random_indices)
+    # Shuffle and select a subset of the training dataset for augmentation
+    augmented_train_dataset = train_dataset.shuffle(seed=42).select(range(5000))
 
-    # Apply custom transformation to these samples
-    augmented_samples = random_subset.map(custom_transform, load_from_cache_file=False)
+    # Apply custom transformation to the augmented dataset
+    augmented_train_dataset = augmented_train_dataset.map(custom_transform, load_from_cache_file=False)
 
-    # Tokenize the augmented data
-    augmented_samples = augmented_samples.map(tokenize_function, batched=True)
-    
-    # Combine the original training dataset with the augmented samples
-    # Note: No need to tokenize the original dataset again if it's already tokenized.
-    # If it's not, you should tokenize it before concatenation
-    augmented_dataset = datasets.concatenate_datasets([train_dataset, augmented_samples])
+    # Combine the original training dataset with the augmented dataset
+    combined_train_dataset = datasets.concatenate_datasets([train_dataset, augmented_train_dataset])
 
-    # Set the format to PyTorch tensors
-    augmented_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
+    # Tokenize the combined dataset
+    tokenized_train_dataset = combined_train_dataset.map(tokenize_function, batched=True)
 
-    # Rename 'label' to 'labels' if it hasn't been done already
-    if 'label' in augmented_dataset.column_names:
-        augmented_dataset = augmented_dataset.rename_column('label', 'labels')
+    # Remove the 'text' column from the dataset
+    tokenized_train_dataset = tokenized_train_dataset.remove_columns(["text"])
 
-    # Create the DataLoader
-    train_dataloader = DataLoader(augmented_dataset, shuffle=True, batch_size=args.batch_size)
+    # Rename the 'label' column to 'labels'
+    tokenized_train_dataset = tokenized_train_dataset.rename_column("label", "labels")
+
+    # Set the format for PyTorch
+    tokenized_train_dataset.set_format("torch")
+
+    # Create a DataLoader for the transformed training dataset
+    transformed_train_dataset = tokenized_train_dataset
+    train_dataloader = DataLoader(transformed_train_dataset, shuffle=True, batch_size=args.batch_size)
 
     ##### YOUR CODE ENDS HERE ######
 
