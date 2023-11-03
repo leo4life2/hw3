@@ -98,19 +98,32 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
-    tokenized_datasets = dataset.map(tokenize_function, batched=True)
-    train_dataset = tokenized_datasets["train"]
+    train_dataset = dataset["train"]
 
-    # We'll augment the dataset with 5,000 random transformed examples
+    # Select 5,000 random samples to be transformed
     num_augmented_samples = 5000
     random_indices = random.sample(range(len(train_dataset)), num_augmented_samples)
-    augmented_samples = train_dataset.select(random_indices).map(custom_transform, load_from_cache_file=False)
+    random_subset = train_dataset.select(random_indices)
 
-    augmented_dataset = datasets.concatenate_datasets([train_dataset, augmented_samples])
-    augmented_dataset = augmented_dataset.remove_columns([column for column in augmented_dataset.column_names if column not in ['input_ids', 'attention_mask', 'label']])
-    augmented_dataset = augmented_dataset.rename_column("label", "labels")
-    augmented_dataset.set_format("torch")
+    # Apply custom transformation to these samples
+    augmented_samples = random_subset.map(custom_transform, load_from_cache_file=False)
 
+    # Tokenize the augmented data
+    augmented_samples = augmented_samples.map(tokenize_function, batched=True)
+    
+    # Combine the original training dataset with the augmented samples
+    # Note: No need to tokenize the original dataset again if it's already tokenized.
+    # If it's not, you should tokenize it before concatenation
+    augmented_dataset = dataset.concatenate_datasets([train_dataset, augmented_samples])
+
+    # Set the format to PyTorch tensors
+    augmented_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
+
+    # Rename 'label' to 'labels' if it hasn't been done already
+    if 'label' in augmented_dataset.column_names:
+        augmented_dataset = augmented_dataset.rename_column('label', 'labels')
+
+    # Create the DataLoader
     train_dataloader = DataLoader(augmented_dataset, shuffle=True, batch_size=args.batch_size)
 
     ##### YOUR CODE ENDS HERE ######
