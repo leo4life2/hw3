@@ -114,7 +114,7 @@ def create_augmented_dataloader(args, dataset):
     # Combine the original training dataset with the augmented samples
     # Note: No need to tokenize the original dataset again if it's already tokenized.
     # If it's not, you should tokenize it before concatenation
-    augmented_dataset = dataset.concatenate_datasets([train_dataset, augmented_samples])
+    augmented_dataset = datasets.concatenate_datasets([train_dataset, augmented_samples])
 
     # Set the format to PyTorch tensors
     augmented_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
